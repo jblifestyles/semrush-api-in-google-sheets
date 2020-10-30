@@ -623,7 +623,87 @@ function PHRASE_QUESTIONS_SEMRUSH(query,limit,db,filterBySearchVolume,searchVolu
   
 }
 
-
 /* ---------------------------------------------------------------------------*
                        MAIN functions END 
+* -------------------------------------------------------------------------*/
+
+/* ---------------------------------------------------------------------------*
+                       EXPERIMENTAL functions START 
+NEEDED: flag when experimental functions called
+* -------------------------------------------------------------------------*/
+
+
+/**
+* Returns Historical rankings tracked in a specific project
+* @param ("3909523"} project REQUIRED The project ID for the tracking campaign. Displayed in URL https://www.screencast.com/t/xVsVCv8kp7
+* @param {"example.com"} domain REQUIRED The tracked domain in the campaign, example: "nytimes.com", DO NOT include protocol (http/https) or trailing slash ... TEST IF THIS WORKS ON COMPETITOR URLS IN CAMPAIGN
+* @param {"kpi"} tags OPTIONAL The tags you want to filter by. ...  TEST IF THIS WORKS WITH MULTIPLE TAGS
+* @param {10} limit OPTIONAL Number from 1 to 10000
+* @param {0} offset OPTIONAL The offset when pulling results. Default is 0
+* @param {202001} date OPTIONAL Leave this blank for current month. YYYYMM format for historical reports, note: always reports on the 1st of the month.
+* @param {6} months OPTIONAL Number of months to pull. Leave this blank for current month only.
+* @param (???) filterBy Optional Don't know what this does, default is blank
+* @param (???) linkType Optional Don't know what this does, default is 0
+* @param {true} excludeHeaders OPTIONAL true to EXCLUDE column headers or false to include. Default is false.
+* @param {true} cache OPTIONAL use FALSE if you DO NOT want to cache these results or DO NOT want to return cached results, default is TRUE (cache enabled)
+* @return Access historical keyword rankings from a project in semrush.com
+* @customfunction
+* Byproduct of @jakebohall futzing
+*/
+
+function HISTORICAL_RANKING_KEYWORD_SEMRUSH(project,domain,tags,limit,offset,date,months,filterBy,linkType,excludeHeaders,cache) {
+  
+  try {
+    if (!domain || domain.indexOf("http") > -1) return "Error: Enter a valid domain, do not include protocol"
+   /* var project, domain, tags = tags || "", limit = limit || "", offset = offset || 0, date, months, filterBy = filterBy || "", linkType = linkType || 0, excludeHeaders */
+    var tags = tags || "", limit = limit || "", offset = offset || 0, months = months || 0, filterBy = filterBy || "", linkType = linkType || 0
+    typeof cache === 'boolean' && cache === false ? cache = false: cache = true
+    
+    var accountCheck = SemrushGlobal.methods.checkAccount() 
+    if (!accountCheck[0]) return accountCheck[1] 
+    
+    if (cache) {
+      var cacheStringName = ROOT_.encode(arguments.callee.name,arguments)
+      var cachedResult = ROOT_.checkCache(cacheStringName) 
+      if (cachedResult) return cachedResult
+        } 
+    
+    currentDate = new (Date);
+    currentMonth = currentDate.getMonth()+1;
+    date ? startDate = date + "01" : startDate = "" + currentDate.getFullYear() + currentMonth + "01";
+    
+    var startYear = startDate.substring(0,4);
+    var startMonth = startDate.substring(4,6);
+    var pastDate = new Date(startYear, startMonth, "01");
+    pastDate.setMonth(pastDate.getMonth() - months);
+    
+    months ? endDate = "" + pastDate.getFullYear() + ('0'+pastDate.getMonth()).slice(-2) + "01" : endDate = startDate;
+    
+    /**
+    * JUST REALIZED.. 
+    * need to create a call for each month vs. passing start/end, as we only need to see rankings on 1st of each month vs. pulling every day during the timeframe.
+    * MVP idea: this only populates list for a single month, option to suppress keyword list, pulls date from cell, and populates rankings below..?
+    
+    SemrushGlobal.methods.giveApiRest();
+        
+    var result = UrlFetchApp.fetch(SemrushGlobal.queries.projectRankings+project+"/tracking/?key="+SemrushGlobal.data.API_KEY+"&action=report&type=tracking_position_organic&display_limit="+limit+"&display_offset="+offset+"&date_begin="+startDate+"&date_end="+endDate+"&display_filter="+filterBy+"&url=*"+domain+"%2F*&linktype_filter="+linkType+"&display_tags="+tags).getContentText()
+    if (result.indexOf("ERROR") > -1) throw result.trim()
+    
+    /**
+    *  NEEDED: Create a new parser, as the response is signficantly different... 
+    *  Headers Format  Keyword, EndMonth Rank, Month x Rank, Month y Rank, StartMonth Rank 
+    *  MVP idea means only need to parse 2 columns, with keyword column optional.. 
+    */
+      
+    if (cache) ROOT_.addToCache(cacheStringName, SemrushGlobal.methods.parseApiResponse(result,excludeHeaders));
+    return SemrushGlobal.methods.parseApiResponse(result,excludeHeaders);
+  } catch (e) {
+    return e
+  }
+  
+  
+}
+
+/* ---------------------------------------------------------------------------*
+                       EXPERIMENTAL functions END 
 * -------------------------------------------------------------------------*/
